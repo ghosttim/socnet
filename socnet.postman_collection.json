@@ -1,0 +1,39 @@
+{
+  "info": {
+    "name": "Social Network",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "POST /user/register",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"first_name\":\"Test\",\"second_name\":\"User\",\"birthdate\":\"1990-01-01\",\"biography\":\"test\",\"city\":\"Moscow\",\"password\":\"test123\"}"
+        },
+        "url": "http://localhost:8080/user/register"
+      }
+    },
+    {
+      "name": "POST /login",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id\":\"1\",\"password\":\"test123\"}"
+        },
+        "url": "http://localhost:8080/login"
+      }
+    },
+    {
+      "name": "GET /user/get/{id}",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:8080/user/get/1"
+      }
+    }
+  ]
+}

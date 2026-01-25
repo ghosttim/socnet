@@ -1,0 +1,26 @@
+{
+    "name": "kurganov/social-network",
+    "description": "Social network homework",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Artem Kurganov",
+            "email": "kurganov.artem@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "": ["src/", "public/"]
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
