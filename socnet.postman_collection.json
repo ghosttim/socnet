@@ -34,6 +34,24 @@
         "method": "GET",
         "url": "http://localhost:8080/user/get/1"
       }
+    },
+    {
+      "name": "GET /user/search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/user/search?first_name=Алекс&second_name=Пуш",
+          "host": ["{{base_url}}"],
+          "path": ["user", "search"],
+          "query": [
+            {"key": "first_name", "value": "Алекс"},
+            {"key": "second_name", "value": "Пуш"}
+          ]
+        },
+        "description": "Поиск анкет по префиксу имени и фамилии"
+      },
+      "response": []
     }
   ]
 }

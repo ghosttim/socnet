@@ -22,6 +22,10 @@ class Router
     public function dispatch(string $method, string $uri): void
     {
         $path = parse_url($uri, PHP_URL_PATH);
+        $queryString = parse_url($uri, PHP_URL_QUERY) ?? '';
+
+        // Парсим query параметры в $_GET
+        parse_str($queryString, $_GET);
 
         foreach ($this->routes as $route) {
             [$routeMethod, $routePath, $handler] = $route;
@@ -46,7 +50,6 @@ class Router
             }
         }
 
-        // Маршрут не найден
         http_response_code(404);
         echo json_encode(['error' => 'Not Found']);
     }

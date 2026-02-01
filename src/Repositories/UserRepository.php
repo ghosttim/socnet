@@ -133,16 +133,73 @@ class UserRepository
     private function getUserForApi(int $userId): ?array
     {
         $sql = "SELECT 
-                    u.id as user_id,
-                    p.first_name,
-                    p.second_name,
-                    p.birthdate,
-                    p.biography,
-                    p.city
-                FROM users u
-                LEFT JOIN profiles p ON u.id = p.user_id
-                WHERE u.id = ?";
+                user_id,
+                first_name,
+                second_name,
+                birthdate,
+                biography,
+                city
+            FROM profiles
+            WHERE user_id = ?";
 
         return $this->db->queryOne($sql, [$userId]);
+    }
+
+    public function search(): void
+    {
+        // Получаем query параметры
+        $firstName = $_GET['first_name'] ?? '';
+        $lastName = $_GET['second_name'] ?? '';
+
+        // Валидация
+        if (empty($firstName) || empty($lastName)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Both first_name and second_name parameters are required']);
+            return;
+        }
+
+        // Преобразуем префиксы для LIKE запроса
+        $firstNamePattern = $firstName . '%';
+        $lastNamePattern = $lastName . '%';
+
+        try {
+            // Ищем анкеты по префиксам имени и фамилии
+            $profiles = $this->searchProfiles($firstNamePattern, $lastNamePattern);
+
+            // Форматируем ответ по спецификации
+            $response = array_map(function($profile) {
+                return [
+                    'id' => (string)$profile['user_id'],
+                    'first_name' => $profile['first_name'],
+                    'second_name' => $profile['second_name'],
+                    'birthdate' => $profile['birthdate'],
+                    'biography' => $profile['biography'] ?? '',
+                    'city' => $profile['city'] ?? ''
+                ];
+            }, $profiles);
+
+            echo json_encode($response);
+
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Search failed: ' . $e->getMessage()]);
+        }
+    }
+
+    private function searchProfiles(string $firstNamePattern, string $lastNamePattern): array
+    {
+        $sql = "SELECT 
+                user_id,
+                first_name,
+                second_name,
+                birthdate,
+                biography,
+                city
+            FROM profiles
+            WHERE first_name LIKE ? 
+              AND second_name LIKE ?
+            ORDER BY user_id ASC";
+
+        return $this->db->fetchAll($sql, [$firstNamePattern, $lastNamePattern]);
     }
 }

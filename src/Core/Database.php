@@ -62,4 +62,10 @@ class Database
         $stmt->execute($params);
         return $stmt;
     }
+
+    public function fetchAll(string $sql, array $params = []): array
+    {
+        $stmt = $this->query($sql, $params);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 }
