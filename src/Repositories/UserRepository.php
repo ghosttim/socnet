@@ -197,8 +197,7 @@ class UserRepository
                 city
             FROM profiles
             WHERE first_name LIKE ? 
-              AND second_name LIKE ?
-            ORDER BY user_id ASC";
+              AND second_name LIKE ?";
 
         return $this->db->fetchAll($sql, [$firstNamePattern, $lastNamePattern]);
     }
