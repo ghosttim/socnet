@@ -2,7 +2,7 @@
 
 # Остановка и удаление существующих контейнеров
 echo "Останавливаем работающие контейнеры..."
-docker-compose down
+docker-compose down --remove-orphans
 if [ $? -ne 0 ]; then
   echo "Ошибка при остановке контейнеров"
   exit 1
@@ -19,7 +19,7 @@ fi
 
 # Запуск контейнеров в фоновом режиме
 echo "Запускаем контейнеры..."
-docker-compose up -d
+docker-compose up -d --remove-orphans
 if [ $? -ne 0 ]; then
   echo "Ошибка при запуске контейнеров"
   exit 1

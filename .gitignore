@@ -1,6 +1,10 @@
 .env
 /vendor/
+vendor
 composer.lock
+volumes
+docker/volumes
+docker/replication/volumes
 .phpunit.result.cache
 .idea/
 .vscode/
