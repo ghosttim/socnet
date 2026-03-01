@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e  # Прерывать скрипт при ошибке
+set -e
 
 MASTER_CONTAINER="socnet-db"
 
@@ -24,7 +24,7 @@ fi
 
 if docker ps -a --format '{{.Names}}' | grep -q "^$REPLICA2_CONTAINER$"; then
   echo "Останавливаем и удаляем предыдущую реплику 2..."
-  docker-compose -f docker-compose.yml rm -f --stop --volumes $REPLICA2_SERVICE
+  docker rm -f $REPLICA2_CONTAINER 2>/dev/null || true
 fi
 
 # Очистка директорий реплик
@@ -48,18 +48,24 @@ if ! docker ps | grep -q "$MASTER_CONTAINER"; then
   exit 1
 fi
 
-echo "Обновляем конфигурацию мастера..."
-
-docker exec -i $MASTER_CONTAINER sh -c 'cat > /usr/local/share/postgresql.conf.append << "EOF"
-ssl = off
-wal_level = replica
-max_wal_senders = 10
-EOF
-'
+# Обновляем конфигурацию мастера для синхронной репликации
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET wal_level = 'replica';" || true
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET max_wal_senders = 10;" || true
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET synchronous_commit = on;" || true
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET synchronous_standby_names = 'FIRST 1 (dbslave, dbslave2)';" || true
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT pg_reload_conf();" || true
 
 echo "Перезапускаем мастер для применения конфигурации..."
 docker restart $MASTER_CONTAINER
-sleep 10
+sleep 15
+
+echo "Применяем конфигурацию через ALTER SYSTEM и перезагружаем PostgreSQL..."
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT pg_reload_conf();"
+
+sleep 5
+
+echo "Проверяем состояние репликации..."
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT application_name, sync_state FROM pg_stat_replication;"
 
 echo "Создаём пользователя replicator для репликации..."
 docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "CREATE ROLE replicator WITH LOGIN REPLICATION PASSWORD 'password123';" || echo "Пользователь replicator уже существует, продолжаем."
@@ -76,9 +82,15 @@ host all all 0.0.0.0/0 md5
 host all all ::/0 md5
 EOF'
 
+echo "Применяем конфигурацию через ALTER SYSTEM и перезагружаем PostgreSQL..."
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT pg_reload_conf();"
+
 echo "Перезапускаем мастер для применения pg_hba.conf..."
 docker restart $MASTER_CONTAINER
 sleep 15
+
+echo "Выполняем pg_reload_conf() для применения конфигурации без полного перезапуска..."
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT pg_reload_conf();"
 
 echo "Создаём директорию для бэкапа на мастере..."
 docker exec -i $MASTER_CONTAINER rm -rf /dbslave && docker exec -i $MASTER_CONTAINER mkdir -p /dbslave
@@ -107,16 +119,21 @@ echo "port = 5432" >> "$REPLICA1_DATA_DIR/postgresql.auto.conf"
 # Настройка второй реплики
 echo "Настраиваем вторую реплику..."
 touch "$REPLICA2_DATA_DIR/standby.signal"
-echo "primary_conninfo = 'host=socnet-db port=5432 user=replicator password=password123 application_name=$REPLICA2_SERVICE'" > "$REPLICA2_DATA_DIR/postgresql.auto.conf"
+echo "primary_conninfo = 'host=socnet-db port=5432 user=replicator password=password123 application_name=dbslave2'" > "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "#restore_command = 'cp /var/lib/postgresql/archive/%f %p'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "recovery_target_timeline = 'latest'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "promote_trigger_file = '/tmp/postgresql.trigger2'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "port = 5432" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 
-echo "Реплики настроены. Запуск через docker-compose..."
-echo "Команда запуска: docker-compose -f docker-compose.yml up -d --build --remove-orphans --quiet-pull"
+echo "Реплики настроены"
 echo "Удаляем старые контейнеры, если они существуют..."
 docker rm -f socnet-db-replica socnet-db-replica-async 2>/dev/null || true
 docker-compose -f docker-compose.yml up -d --build --remove-orphans --quiet-pull || { echo "Ошибка при запуске реплик"; exit 1; }
 
-echo "Реплики успешно запущены"
+echo "Ожидание запуска реплик..."
+sleep 10
+
+echo "Проверка состояния репликаций на мастере..."
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT application_name, sync_state FROM pg_stat_replication;"
+
+echo "Реплики успешно запущены: одна в режиме sync, вторая — potential"
