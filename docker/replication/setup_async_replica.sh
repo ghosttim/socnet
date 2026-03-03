@@ -48,12 +48,23 @@ if ! docker ps | grep -q "$MASTER_CONTAINER"; then
   exit 1
 fi
 
-#Обновляем конфигурацию мастера
+# Обновляем конфигурацию мастера для АСИНХРОННОЙ репликации
+echo "Настраиваем мастер для асинхронной репликации..."
+
+# Отключаем синхронную репликацию (очищаем synchronous_standby_names)
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET synchronous_standby_names = '';"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET wal_level = 'replica';"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET max_wal_senders = 10;"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "ALTER SYSTEM SET synchronous_commit = 'off';"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT pg_reload_conf();"
+
+# Дополнительно создаем файл конфигурации
 docker exec -i $MASTER_CONTAINER sh -c 'cat > /usr/local/share/postgresql.conf.append << "EOF"
 ssl = off
 wal_level = replica
 max_wal_senders = 10
 synchronous_commit = off
+synchronous_standby_names = ''
 EOF
 '
 
@@ -80,8 +91,14 @@ echo "Перезапускаем мастер для применения pg_hba
 docker restart $MASTER_CONTAINER
 sleep 15
 
+# Проверяем, что синхронная репликация отключена
+echo "Проверяем параметры репликации на мастере:"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SHOW synchronous_standby_names;"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SHOW synchronous_commit;"
+
 echo "Создаём директорию для бэкапа на мастере..."
-docker exec -i $MASTER_CONTAINER rm -rf /dbslave && docker exec -i $MASTER_CONTAINER mkdir -p /dbslave
+docker exec -i $MASTER_CONTAINER rm -rf /dbslave 2>/dev/null || true
+docker exec -i $MASTER_CONTAINER mkdir -p /dbslave
 
 echo "Выполняем pg_basebackup для создания начального бэкапа..."
 docker exec -i $MASTER_CONTAINER pg_basebackup -h localhost -D /dbslave -U replicator -v -P --wal-method=stream || {
@@ -99,18 +116,14 @@ docker cp $MASTER_CONTAINER:/dbslave/. "$REPLICA2_DATA_DIR"
 echo "Настраиваем первую реплику..."
 touch "$REPLICA1_DATA_DIR/standby.signal"
 echo "primary_conninfo = 'host=socnet-db port=5432 user=replicator password=password123 application_name=$REPLICA1_SERVICE'" > "$REPLICA1_DATA_DIR/postgresql.auto.conf"
-echo "#restore_command = 'cp /var/lib/postgresql/archive/%f %p'" >> "$REPLICA1_DATA_DIR/postgresql.auto.conf"
 echo "recovery_target_timeline = 'latest'" >> "$REPLICA1_DATA_DIR/postgresql.auto.conf"
-echo "promote_trigger_file = '/tmp/postgresql.trigger'" >> "$REPLICA1_DATA_DIR/postgresql.auto.conf"
 echo "port = 5432" >> "$REPLICA1_DATA_DIR/postgresql.auto.conf"
 
 # Настройка второй реплики
 echo "Настраиваем вторую реплику..."
 touch "$REPLICA2_DATA_DIR/standby.signal"
 echo "primary_conninfo = 'host=socnet-db port=5432 user=replicator password=password123 application_name=$REPLICA2_SERVICE'" > "$REPLICA2_DATA_DIR/postgresql.auto.conf"
-echo "#restore_command = 'cp /var/lib/postgresql/archive/%f %p'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "recovery_target_timeline = 'latest'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
-echo "promote_trigger_file = '/tmp/postgresql.trigger2'" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 echo "port = 5432" >> "$REPLICA2_DATA_DIR/postgresql.auto.conf"
 
 echo "Реплики настроены"
@@ -118,4 +131,11 @@ echo "Удаляем старые контейнеры, если они суще
 docker rm -f socnet-db-replica socnet-db-replica-async 2>/dev/null || true
 docker-compose -f docker-compose.yml up -d --build --remove-orphans --quiet-pull || { echo "Ошибка при запуске реплик"; exit 1; }
 
-echo "Реплики успешно запущены в асинхронном режиме"
+echo "Ожидание запуска реплик..."
+sleep 10
+
+# Проверяем статус репликации
+echo "Проверяем статус репликации на мастере:"
+docker exec -i $MASTER_CONTAINER psql -U postgres -d social_network -c "SELECT application_name, sync_state FROM pg_stat_replication;"
+
+echo "Реплики успешно запущены в АСИНХРОННОМ режиме"
