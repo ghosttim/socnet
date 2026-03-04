@@ -2,13 +2,13 @@
 
 namespace Repositories;
 
-use Core\Database;
+use Core\DbInterface;
 
 class AuthRepository
 {
-    private Database $db;
+    private DbInterface $db;
 
-    public function __construct(Database $db)
+    public function __construct(DbInterface $db)
     {
         $this->db = $db;
     }

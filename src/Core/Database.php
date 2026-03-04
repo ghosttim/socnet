@@ -1,7 +1,7 @@
 <?php
 namespace Core;
 
-class Database
+class Database implements DbInterface
 {
     private \PDO $pdo;
 

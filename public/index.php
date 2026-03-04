@@ -1,8 +1,8 @@
 <?php
-// Включаем автозагрузку Composer
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Core\Database;
+use Core\DatabaseManger;
 use Core\Router;
 
 header('Content-Type: application/json');
@@ -12,7 +12,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 $routes = require_once __DIR__ . '/../routes.php';
 
-$db = new Database();
+$db = (new DatabaseManger())->getDatabase();
 $router = new Router($db);
 
 $router->loadRoutes($routes);

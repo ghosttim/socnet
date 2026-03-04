@@ -2,11 +2,25 @@
 1) git clone git@github.com:ghosttim/socnet.git
 2) cd socnet
 3) cp .env.example .env
-4) composer install
+4) Если будут запущены реплики, нужно в  .env установить APP_USE_REPLICATION=true
+5composer install
 
 
 ## Запуск
-docker-compose up -d
+Запустить проект 
+```
+./setup_base.sh
+```
+Запустить реплику в потоковом режиме
+```
+cd docker/replication/
+./setup_async_replica.sh
+```
+Запустить реплику в синхронном режиме режиме
+```
+cd docker/replication/
+./setup_sync_replica.sh
+```
 
 ## User Registration
 Endpoint: `POST /user/register`

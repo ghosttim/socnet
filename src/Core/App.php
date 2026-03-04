@@ -6,7 +6,7 @@ namespace Core;
 class App
 {
     private Router $router;
-    private Database $database;
+    private DbInterface $database;
 
     public function __construct()
     {
@@ -50,13 +50,8 @@ class App
      */
     private function initDatabase(): void
     {
-        $this->database = new Database(
-            host: getenv('DB_HOST') ?: 'localhost',
-            dbname: getenv('DB_NAME') ?: 'social_network',
-            username: getenv('DB_USER') ?: 'postgres',
-            password: getenv('DB_PASS') ?: '',
-            port: (int)(getenv('DB_PORT') ?: 5432)
-        );
+        $dbManager = new \Core\DatabaseManger();
+        $this->database = $dbManager->getDatabase();
     }
 
     /**

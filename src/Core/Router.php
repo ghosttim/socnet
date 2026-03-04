@@ -2,14 +2,14 @@
 
 namespace Core;
 
-use Core\Database;
+use Core\DatabaseManger;
 
 class Router
 {
     private array $routes = [];
-    private Database $db;
+    private DbInterface $db;
 
-    public function __construct(Database $db)
+    public function __construct(DbInterface $db)
     {
         $this->db = $db;
     }
