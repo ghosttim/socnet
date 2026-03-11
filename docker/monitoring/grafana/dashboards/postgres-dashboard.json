@@ -4,17 +4,17 @@
   "title": "PostgreSQL Replication Monitoring",
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 2,
+  "version": 3,
   "refresh": "5s",
   "panels": [
 
     {
       "type": "stat",
-      "title": "Rows inserted MASTER",
+      "title": "Rows in table MASTER",
       "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
       "targets": [
         {
-          "expr": "pg_stat_user_tables_n_tup_ins{instance=\"postgres-exporter-master:9187\",relname=\"users\"}",
+          "expr": "users_count_value{instance=\"postgres-exporter-master:9187\"}",
           "refId": "A"
         }
       ]
@@ -46,7 +46,7 @@
 
     {
       "type": "timeseries",
-      "title": "Insert Rate (rows/sec)",
+      "title": "Insert Rate",
       "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 },
       "targets": [
         {
@@ -59,31 +59,18 @@
 
     {
       "type": "timeseries",
-      "title": "Replication Difference (Master vs Replica)",
+      "title": "Replication Difference",
       "gridPos": { "x": 0, "y": 14, "w": 24, "h": 8 },
       "targets": [
         {
-          "expr": "pg_stat_user_tables_n_tup_ins{instance=\"postgres-exporter-master:9187\",relname=\"users\"} - users_count_value{instance=\"postgres-exporter-replica1:9187\"}",
-          "legendFormat": "Master - Replica1",
+          "expr": "users_count_value{instance=\"postgres-exporter-master:9187\"} - users_count_value{instance=\"postgres-exporter-replica1:9187\"}",
+          "legendFormat": "MASTER - REPLICA1",
           "refId": "A"
         },
         {
-          "expr": "pg_stat_user_tables_n_tup_ins{instance=\"postgres-exporter-master:9187\",relname=\"users\"} - users_count_value{instance=\"postgres-exporter-replica2:9187\"}",
-          "legendFormat": "Master - Replica2",
+          "expr": "users_count_value{instance=\"postgres-exporter-master:9187\"} - users_count_value{instance=\"postgres-exporter-replica2:9187\"}",
+          "legendFormat": "MASTER - REPLICA2",
           "refId": "B"
-        }
-      ]
-    },
-
-    {
-      "type": "timeseries",
-      "title": "Transaction commits",
-      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
-      "targets": [
-        {
-          "expr": "rate(pg_stat_database_xact_commit[1m])",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
         }
       ]
     }
