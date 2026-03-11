@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+
+  prometheus:
+    image: prom/prometheus
+    container_name: socnet-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - socnet-network
+
+
+  postgres-exporter-master:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter-master
+
+    volumes:
+      - ./postgres-exporter/queries.yaml:/etc/postgres_exporter/queries.yaml
+
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:password123@socnet-db:5432/social_network?sslmode=disable"
+
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_user_tables"
+
+    ports:
+      - "9187:9187"
+
+    networks:
+      - socnet-network
+
+
+  postgres-exporter-replica1:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter-replica1
+
+    volumes:
+      - ./postgres-exporter/queries.yaml:/etc/postgres_exporter/queries.yaml
+
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:password123@socnet-db-replica:5432/social_network?sslmode=disable"
+
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_user_tables"
+
+    ports:
+      - "9188:9187"
+
+    networks:
+      - socnet-network
+
+
+  postgres-exporter-replica2:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter-replica2
+
+    volumes:
+      - ./postgres-exporter/queries.yaml:/etc/postgres_exporter/queries.yaml
+
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:password123@socnet-db-replica-async:5432/social_network?sslmode=disable"
+
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_user_tables"
+
+    ports:
+      - "9189:9187"
+
+    networks:
+      - socnet-network
+
+
+  grafana:
+    image: grafana/grafana
+    container_name: socnet-grafana
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+    depends_on:
+      - prometheus
+
+    networks:
+      - socnet-network
+
+
+networks:
+  socnet-network:
+    name: socnet_socnet-network

@@ -1,0 +1,15 @@
+users_count:
+  query: |
+    SELECT COUNT(*) AS value FROM users;
+  metrics:
+    - value:
+        usage: "GAUGE"
+        description: "Users rows"
+
+profiles_count:
+  query: |
+    SELECT COUNT(*) AS value FROM profiles;
+  metrics:
+    - value:
+        usage: "GAUGE"
+        description: "Profiles rows"

@@ -21,6 +21,11 @@ cd docker/replication/
 cd docker/replication/
 ./setup_sync_replica.sh
 ```
+Запустить мониторинг
+```
+cd docker/monitoring
+./setup-monitoring.sh
+```
 
 ## User Registration
 Endpoint: `POST /user/register`
